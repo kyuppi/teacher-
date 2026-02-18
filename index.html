@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>授業進捗管理ツール (クラス管理対応)</title>
+    <title>授業進捗管理ツール (Excel連携強化版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -29,6 +29,9 @@
             border-bottom: 2px solid #2563eb;
             color: #2563eb;
         }
+        input[type="range"] {
+            accent-color: #2563eb;
+        }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -36,71 +39,68 @@
     <div class="max-w-6xl mx-auto">
         <header class="mb-6 text-center">
             <h1 class="text-3xl font-bold text-gray-800">授業進捗マネージャー</h1>
-            <p class="text-gray-600 mt-2">クラス・科目・単元をまとめて管理</p>
+            <p class="text-gray-600 mt-2">Excelへのデータ転送が簡単にできます</p>
         </header>
 
         <!-- タブ切り替え -->
         <div class="flex gap-8 mb-6 border-b border-gray-200">
             <button onclick="switchTab('main')" id="tab-main" class="pb-2 font-bold tab-active">進捗管理</button>
-            <button onclick="switchTab('settings')" id="tab-settings" class="pb-2 font-bold text-gray-500 hover:text-gray-700">クラス設定</button>
+            <button onclick="switchTab('report')" id="tab-report" class="pb-2 font-bold text-gray-500 hover:text-gray-700">レポート</button>
+            <button onclick="switchTab('settings')" id="tab-settings" class="pb-2 font-bold text-gray-500 hover:text-gray-700">設定</button>
         </div>
 
         <!-- メイン画面 (進捗管理) -->
         <div id="view-main">
-            <!-- フィルター -->
-            <div class="mb-4 flex flex-wrap gap-4 items-center">
-                <span class="text-sm font-bold text-gray-600">表示絞り込み:</span>
-                <select id="filter-class" onchange="renderLessons()" class="border p-1 rounded text-sm">
-                    <option value="all">すべてのクラス</option>
-                </select>
+            <!-- フィルター & エクセル連携ボタン -->
+            <div class="mb-4 flex flex-wrap justify-between items-center gap-4">
+                <div class="flex items-center gap-4">
+                    <span class="text-sm font-bold text-gray-600">表示絞り込み:</span>
+                    <select id="filter-class" onchange="renderLessons()" class="border p-1 rounded text-sm bg-white">
+                        <option value="all">すべてのクラス</option>
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="copyToClipboard()" class="bg-green-100 text-green-700 border border-green-300 px-3 py-1 rounded text-sm font-bold hover:bg-green-200 transition flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                        Excelへコピペ用
+                    </button>
+                    <button onclick="exportCSV()" class="bg-blue-100 text-blue-700 border border-blue-300 px-3 py-1 rounded text-sm font-bold hover:bg-blue-200 transition flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        CSV保存
+                    </button>
+                </div>
             </div>
 
             <!-- 入力フォーム -->
-            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-                <h2 class="text-lg font-semibold mb-4 text-gray-700">新しい授業を追加</h2>
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8 border-t-4 border-blue-600">
+                <h2 class="text-lg font-semibold mb-4 text-gray-700">授業を記録する</h2>
                 <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <select id="input-class" class="border p-2 rounded w-full">
+                    <select id="input-class" class="border p-2 rounded w-full bg-gray-50">
                         <option value="">クラスを選択</option>
                     </select>
-                    <input type="text" id="subject" placeholder="科目名 (例: 数学)" class="border p-2 rounded w-full">
-                    <input type="text" id="topic" placeholder="単元名 (例: 三角関数)" class="border p-2 rounded w-full">
-                    <select id="status" class="border p-2 rounded w-full">
+                    <input type="text" id="subject" placeholder="科目名" class="border p-2 rounded w-full">
+                    <input type="text" id="topic" placeholder="単元名" class="border p-2 rounded w-full">
+                    <select id="status" class="border p-2 rounded w-full bg-gray-50">
                         <option value="未着手">未着手</option>
-                        <option value="進行中">進行中</option>
+                        <option value="進行中" selected>進行中</option>
                         <option value="完了">完了</option>
                     </select>
-                    <button onclick="addLesson()" class="bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition">
+                    <button onclick="addLesson()" class="bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition shadow-sm">
                         追加
                     </button>
                 </div>
             </div>
 
-            <!-- 統計 -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-center">
-                <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-blue-500">
-                    <p class="text-gray-500 text-xs font-bold uppercase">総授業数</p>
-                    <p id="total-count" class="text-2xl font-bold">0</p>
-                </div>
-                <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-yellow-500">
-                    <p class="text-gray-500 text-xs font-bold uppercase">進行中</p>
-                    <p id="progress-count" class="text-2xl font-bold">0</p>
-                </div>
-                <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-green-500">
-                    <p class="text-gray-500 text-xs font-bold uppercase">完了済み</p>
-                    <p id="completed-count" class="text-2xl font-bold">0</p>
-                </div>
-            </div>
-
             <div class="table-container">
-                <table class="w-full text-left border-collapse">
+                <table class="w-full text-left border-collapse" id="main-table">
                     <thead>
                         <tr class="bg-gray-100 border-b text-sm">
+                            <th class="p-4 text-gray-700 font-bold">日付</th>
                             <th class="p-4 text-gray-700 font-bold">クラス</th>
                             <th class="p-4 text-gray-700 font-bold">科目</th>
-                            <th class="p-4 text-gray-700 font-bold">単元/内容</th>
-                            <th class="p-4 text-gray-700 font-bold">ステータス</th>
-                            <th class="p-4 text-gray-700 font-bold">進捗率</th>
-                            <th class="p-4 text-gray-700 font-bold text-right">操作</th>
+                            <th class="p-4 text-gray-700 font-bold">単元</th>
+                            <th class="p-4 text-gray-700 font-bold">進捗</th>
+                            <th class="p-4 text-gray-700 font-bold text-right no-print">操作</th>
                         </tr>
                     </thead>
                     <tbody id="lesson-list"></tbody>
@@ -108,71 +108,69 @@
             </div>
         </div>
 
-        <!-- 設定画面 (クラス管理) -->
+        <!-- レポート画面 -->
+        <div id="view-report" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-lg font-bold mb-4 text-blue-700">📅 今週の授業数 (直近7日間)</h3>
+                    <div id="weekly-stats" class="space-y-3"></div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-lg font-bold mb-4 text-green-700">🗓 今月の授業数 (月別合計)</h3>
+                    <div id="monthly-stats" class="space-y-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 設定画面 -->
         <div id="view-settings" class="hidden">
             <div class="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
-                <h2 class="text-lg font-semibold mb-4 text-gray-700">クラスの追加・編集</h2>
+                <h2 class="text-lg font-semibold mb-4 text-gray-700">クラスの管理</h2>
                 <div class="flex gap-2 mb-6">
                     <input type="text" id="new-class-name" placeholder="例: 1年1組" class="border p-2 rounded flex-grow">
                     <button onclick="addClass()" class="bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700">追加</button>
                 </div>
-                
-                <h3 class="font-bold text-gray-600 mb-2">登録済みクラス一覧</h3>
-                <ul id="class-list-ul" class="divide-y border rounded">
-                    <!-- JSで挿入 -->
-                </ul>
+                <ul id="class-list-ul" class="divide-y border rounded"></ul>
             </div>
-        </div>
-        
-        <div class="mt-6 text-right">
-            <button onclick="exportCSV()" class="text-xs text-gray-400 hover:text-gray-600 underline">
-                CSV書き出し
-            </button>
         </div>
     </div>
 
-    <!-- 削除確認モーダル -->
+    <!-- モーダル -->
     <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
-            <h3 class="text-lg font-bold mb-4">削除しますか？</h3>
-            <p class="text-gray-600 mb-6" id="modal-text">この操作は取り消せません。</p>
-            <div class="flex justify-end gap-3">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+            <h3 class="text-lg font-bold mb-4" id="modal-title">確認</h3>
+            <p class="text-gray-600 mb-6" id="modal-text"></p>
+            <div class="flex justify-center gap-3">
                 <button onclick="closeModal()" class="px-4 py-2 border rounded text-gray-600">キャンセル</button>
-                <button id="confirm-delete" class="px-4 py-2 bg-red-600 text-white rounded">削除</button>
+                <button id="confirm-delete" class="px-4 py-2 bg-red-600 text-white rounded">実行</button>
             </div>
         </div>
     </div>
 
     <script>
-        // データ構造
         let state = {
-            lessons: JSON.parse(localStorage.getItem('lessonDataV2')) || [],
+            lessons: JSON.parse(localStorage.getItem('lessonDataV3')) || [],
             classes: JSON.parse(localStorage.getItem('classData')) || ["1年1組", "1年2組", "2年1組"]
         };
 
         let deleteContext = null;
 
         function save() {
-            localStorage.setItem('lessonDataV2', JSON.stringify(state.lessons));
+            localStorage.setItem('lessonDataV3', JSON.stringify(state.lessons));
             localStorage.setItem('classData', JSON.stringify(state.classes));
             updateUI();
         }
 
         function switchTab(tab) {
-            if (tab === 'main') {
-                document.getElementById('view-main').classList.remove('hidden');
-                document.getElementById('view-settings').classList.add('hidden');
-                document.getElementById('tab-main').className = "pb-2 font-bold tab-active";
-                document.getElementById('tab-settings').className = "pb-2 font-bold text-gray-500 hover:text-gray-700";
-            } else {
-                document.getElementById('view-main').classList.add('hidden');
-                document.getElementById('view-settings').classList.remove('hidden');
-                document.getElementById('tab-settings').className = "pb-2 font-bold tab-active";
-                document.getElementById('tab-main').className = "pb-2 font-bold text-gray-500 hover:text-gray-700";
-            }
+            ['main', 'report', 'settings'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).className = "pb-2 font-bold text-gray-500 hover:text-gray-700";
+            });
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).className = "pb-2 font-bold tab-active";
+            if(tab === 'report') renderReports();
         }
 
-        // クラス管理
         function addClass() {
             const name = document.getElementById('new-class-name').value.trim();
             if (name && !state.classes.includes(name)) {
@@ -184,29 +182,31 @@
 
         function removeClass(index) {
             const className = state.classes[index];
-            const inUse = state.lessons.some(l => l.className === className);
-            if (inUse) {
-                alertBox("このクラスは授業データで使用されているため削除できません");
+            if (state.lessons.some(l => l.className === className)) {
+                alertBox("使用中のクラスは削除できません");
                 return;
             }
             state.classes.splice(index, 1);
             save();
         }
 
-        // 授業管理
         function addLesson() {
             const className = document.getElementById('input-class').value;
             const subject = document.getElementById('subject').value.trim();
             const topic = document.getElementById('topic').value.trim();
             const status = document.getElementById('status').value;
-
+            
             if (!className || !subject || !topic) {
-                alertBox("クラス、科目、単元をすべて入力してください");
+                alertBox("全項目入力してください");
                 return;
             }
 
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+
             state.lessons.push({
                 id: Date.now(),
+                date: dateStr,
                 className,
                 subject,
                 topic,
@@ -222,134 +222,158 @@
         function updateProgress(id, val) {
             const lesson = state.lessons.find(l => l.id === id);
             lesson.progress = parseInt(val);
-            if (lesson.progress === 100) lesson.status = '完了';
-            else if (lesson.progress > 0) lesson.status = '進行中';
-            else lesson.status = '未着手';
+            lesson.status = lesson.progress === 100 ? '完了' : (lesson.progress > 0 ? '進行中' : '未着手');
             save();
         }
 
         function deleteLesson(id) {
-            deleteContext = { type: 'lesson', id: id };
-            document.getElementById('modal-text').innerText = "この授業データを削除します。";
+            deleteContext = { id };
+            document.getElementById('modal-title').innerText = "削除の確認";
+            document.getElementById('modal-text').innerText = "この授業データを削除しますか？";
             document.getElementById('modal').classList.remove('hidden');
         }
 
         document.getElementById('confirm-delete').onclick = () => {
-            if (deleteContext.type === 'lesson') {
+            if (deleteContext) {
                 state.lessons = state.lessons.filter(l => l.id !== deleteContext.id);
+                save();
             }
             closeModal();
-            save();
         };
 
         function closeModal() {
             document.getElementById('modal').classList.add('hidden');
         }
 
-        // UI描画
-        function updateUI() {
-            renderClasses();
-            renderLessons();
-            updateStats();
+        function renderReports() {
+            const weeklyDiv = document.getElementById('weekly-stats');
+            const monthlyDiv = document.getElementById('monthly-stats');
+            const now = new Date();
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(now.getDate() - 7);
+            
+            const weeklyData = {};
+            state.lessons.forEach(l => {
+                const d = new Date(l.date);
+                if (d >= oneWeekAgo) weeklyData[l.className] = (weeklyData[l.className] || 0) + 1;
+            });
+
+            const monthlyData = {};
+            state.lessons.forEach(l => {
+                const month = l.date.substring(0, 7);
+                if (!monthlyData[month]) monthlyData[month] = {};
+                monthlyData[month][l.className] = (monthlyData[month][l.className] || 0) + 1;
+            });
+
+            weeklyDiv.innerHTML = Object.keys(weeklyData).length ? '' : '<p class="text-gray-400 text-sm">今週のデータはありません</p>';
+            Object.entries(weeklyData).forEach(([cls, count]) => {
+                weeklyDiv.innerHTML += `<div class="flex justify-between items-center border-b pb-2"><span class="font-bold text-gray-700">${cls}</span><span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-bold">${count}回</span></div>`;
+            });
+
+            monthlyDiv.innerHTML = Object.keys(monthlyData).length ? '' : '<p class="text-gray-400 text-sm">月のデータはありません</p>';
+            Object.keys(monthlyData).sort().reverse().slice(0, 3).forEach(month => {
+                let monthHtml = `<div class="mb-4"><h4 class="font-bold text-gray-500 border-l-4 border-green-500 pl-2 mb-2">${month.replace('-', '年')}月</h4>`;
+                Object.entries(monthlyData[month]).forEach(([cls, count]) => {
+                    monthHtml += `<div class="flex justify-between text-sm py-1 ml-4"><span>${cls}</span><span class="font-mono">${count}回</span></div>`;
+                });
+                monthlyDiv.innerHTML += monthHtml + `</div>`;
+            });
         }
 
-        function renderClasses() {
-            // セレクトボックスの更新
+        function updateUI() {
             const filter = document.getElementById('filter-class');
             const input = document.getElementById('input-class');
             const currentFilter = filter.value;
-            
             filter.innerHTML = '<option value="all">すべてのクラス</option>';
             input.innerHTML = '<option value="">クラスを選択</option>';
-            
             state.classes.sort().forEach(c => {
                 filter.innerHTML += `<option value="${c}">${c}</option>`;
                 input.innerHTML += `<option value="${c}">${c}</option>`;
             });
             filter.value = currentFilter;
 
-            // 設定画面のリスト更新
             const ul = document.getElementById('class-list-ul');
             ul.innerHTML = '';
             state.classes.forEach((c, i) => {
-                ul.innerHTML += `
-                    <li class="p-3 flex justify-between items-center bg-white hover:bg-gray-50">
-                        <span>${c}</span>
-                        <button onclick="removeClass(${i})" class="text-red-400 hover:text-red-600 text-sm">削除</button>
-                    </li>
-                `;
+                ul.innerHTML += `<li class="p-3 flex justify-between bg-white hover:bg-gray-50"><span>${c}</span><button onclick="removeClass(${i})" class="text-red-400 hover:text-red-600">削除</button></li>`;
             });
-        }
 
-        function renderLessons() {
             const list = document.getElementById('lesson-list');
-            const filterVal = document.getElementById('filter-class').value;
+            const filterVal = filter.value;
             list.innerHTML = '';
+            const filtered = (filterVal === 'all' ? state.lessons : state.lessons.filter(l => l.className === filterVal)).sort((a,b) => b.id - a.id);
 
-            const filtered = filterVal === 'all' 
-                ? state.lessons 
-                : state.lessons.filter(l => l.className === filterVal);
-
-            filtered.sort((a,b) => a.className.localeCompare(b.className)).forEach(lesson => {
-                const statusClass = 
-                    lesson.status === '完了' ? 'status-completed' : 
-                    (lesson.status === '進行中' ? 'status-in-progress' : 'status-not-started');
-
-                const row = document.createElement('tr');
-                row.className = "border-b hover:bg-gray-50 transition text-sm";
-                row.innerHTML = `
-                    <td class="p-4"><span class="bg-gray-200 px-2 py-1 rounded text-xs font-bold">${lesson.className}</span></td>
-                    <td class="p-4 font-medium">${lesson.subject}</td>
-                    <td class="p-4 text-gray-600">${lesson.topic}</td>
-                    <td class="p-4">
-                        <span class="status-badge ${statusClass}">${lesson.status}</span>
-                    </td>
-                    <td class="p-4">
-                        <div class="flex items-center gap-2">
-                            <input type="range" min="0" max="100" value="${lesson.progress}" 
-                                onchange="updateProgress(${lesson.id}, this.value)" class="w-20">
-                            <span class="text-xs text-gray-500 w-8">${lesson.progress}%</span>
-                        </div>
-                    </td>
-                    <td class="p-4 text-right">
-                        <button onclick="deleteLesson(${lesson.id})" class="text-gray-400 hover:text-red-500">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
-                    </td>
-                `;
-                list.appendChild(row);
+            filtered.forEach(l => {
+                const statusClass = l.status === '完了' ? 'status-completed' : (l.status === '進行中' ? 'status-in-progress' : 'status-not-started');
+                list.innerHTML += `
+                    <tr class="border-b hover:bg-gray-50 text-sm">
+                        <td class="p-4 text-gray-500 text-xs">${l.date}</td>
+                        <td class="p-4 font-bold text-blue-600">${l.className}</td>
+                        <td class="p-4">${l.subject}</td>
+                        <td class="p-4 text-gray-600">${l.topic}</td>
+                        <td class="p-4">
+                            <div class="flex items-center gap-2">
+                                <input type="range" min="0" max="100" value="${l.progress}" onchange="updateProgress(${l.id}, this.value)" class="w-16">
+                                <span class="text-[10px] w-6">${l.progress}%</span>
+                            </div>
+                        </td>
+                        <td class="p-4 text-right no-print">
+                            <button onclick="deleteLesson(${l.id})" class="text-gray-300 hover:text-red-500">削除</button>
+                        </td>
+                    </tr>`;
             });
         }
 
-        function updateStats() {
+        // --- Excel連携用新機能 ---
+        function copyToClipboard() {
             const filterVal = document.getElementById('filter-class').value;
-            const targetLessons = filterVal === 'all' ? state.lessons : state.lessons.filter(l => l.className === filterVal);
+            const filtered = (filterVal === 'all' ? state.lessons : state.lessons.filter(l => l.className === filterVal)).sort((a,b) => b.id - a.id);
             
-            document.getElementById('total-count').innerText = targetLessons.length;
-            document.getElementById('progress-count').innerText = targetLessons.filter(l => l.status === '進行中').length;
-            document.getElementById('completed-count').innerText = targetLessons.filter(l => l.status === '完了').length;
+            if (filtered.length === 0) {
+                alertBox("コピーするデータがありません");
+                return;
+            }
+
+            // タブ区切りテキスト作成 (エクセルが最も認識しやすい形式)
+            let text = "日付\tクラス\t科目\t単元\tステータス\t進捗率\n";
+            filtered.forEach(l => {
+                text += `${l.date}\t${l.className}\t${l.subject}\t${l.topic}\t${l.status}\t${l.progress}%\n`;
+            });
+
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            alertBox("Excel貼り付け用にコピーしました！ExcelでCtrl+Vしてください。");
+        }
+
+        function exportCSV() {
+            // Excelで文字化けしないためのBOM(Byte Order Mark)
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+            let csv = "日付,クラス,科目,単元,ステータス,進捗\n";
+            state.lessons.forEach(l => csv += `${l.date},${l.className},${l.subject},${l.topic},${l.status},${l.progress}%\n`);
+            
+            const blob = new Blob([bom, csv], { type: "text/csv;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `授業記録_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
         }
 
         function alertBox(msg) {
             const div = document.createElement('div');
-            div.className = "fixed top-4 right-4 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-2xl z-[100] animate-bounce";
-            div.innerText = msg;
+            div.className = "fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-8 py-4 rounded-full shadow-2xl z-[100] transition-opacity duration-500 flex items-center gap-2";
+            div.innerHTML = `<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg> ${msg}`;
             document.body.appendChild(div);
-            setTimeout(() => div.remove(), 3000);
-        }
-
-        function exportCSV() {
-            let csvContent = "data:text/csv;charset=utf-8,クラス,科目,単元,ステータス,進捗率\n";
-            state.lessons.forEach(l => {
-                csvContent += `${l.className},${l.subject},${l.topic},${l.status},${l.progress}%\n`;
-            });
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "lesson_report.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            setTimeout(() => {
+                div.style.opacity = '0';
+                setTimeout(() => div.remove(), 500);
+            }, 3000);
         }
 
         window.onload = updateUI;
